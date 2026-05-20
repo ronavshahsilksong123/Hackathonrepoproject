@@ -1,0 +1,1681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elemental Chaos — A Noita-Inspired Pixel Physics Game</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --fire: #ff5010;
+  --ice: #80d8ff;
+  --gold: #ffd700;
+  --acid: #39ff14;
+  --dark: #0a0a0f;
+  --panel: rgba(10,10,20,0.92);
+  --border: #2a2a3a;
+  --text: #ddd8c4;
+  --accent: #ff5010;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--dark);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ===== SCREENS ===== */
+.screen {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 100;
+  background: var(--dark);
+}
+.screen.hidden { display: none; }
+
+/* ===== TITLE SCREEN ===== */
+#titleScreen {
+  background: radial-gradient(ellipse at 50% 60%, #1a0a00 0%, #0a0a0f 70%);
+}
+.title-canvas-bg {
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+.title-content {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 18px;
+}
+.game-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(18px, 4vw, 38px);
+  color: var(--gold);
+  text-shadow: 0 0 20px #ff5010aa, 0 0 40px #ff501055;
+  letter-spacing: 4px;
+  animation: flicker 3s infinite;
+}
+.game-subtitle {
+  font-size: 11px;
+  color: #888;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+@keyframes flicker {
+  0%,95%,100%{opacity:1} 96%{opacity:0.85} 97%{opacity:1} 98%{opacity:0.9}
+}
+
+.menu-buttons {
+  display: flex; flex-direction: column;
+  gap: 10px; margin-top: 20px;
+  width: 260px;
+}
+.btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  padding: 14px 20px;
+  background: transparent;
+  border: 2px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: all 0.15s;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.btn::before {
+  content:''; position:absolute; left:-100%; top:0;
+  width:100%; height:100%;
+  background: linear-gradient(90deg, transparent, rgba(255,80,16,0.15), transparent);
+  transition: left 0.3s;
+}
+.btn:hover::before { left:100%; }
+.btn:hover { border-color: var(--accent); color: var(--gold); transform: translateX(3px); }
+.btn.primary { border-color: var(--accent); color: var(--accent); }
+.btn.primary:hover { background: rgba(255,80,16,0.15); }
+
+/* ===== TUTORIAL SCREEN ===== */
+#tutorialScreen {
+  background: radial-gradient(ellipse at 50% 30%, #00101a 0%, #0a0a0f 70%);
+}
+.tutorial-box {
+  background: var(--panel);
+  border: 2px solid var(--border);
+  padding: 30px 36px;
+  max-width: 680px; width: 92vw;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.tutorial-box h2 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 13px;
+  color: var(--gold);
+  margin-bottom: 20px;
+  text-align: center;
+}
+.tut-section { margin-bottom: 18px; }
+.tut-section h3 {
+  font-size: 11px;
+  color: var(--accent);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+.tut-section p, .tut-section li {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #bbb;
+}
+.tut-section ul { padding-left: 16px; }
+.key-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 20px;
+  margin-top: 8px;
+}
+.key-row { font-size: 10px; color: #aaa; line-height: 1.8; }
+.key-row span {
+  display: inline-block;
+  background: #1a1a2a;
+  border: 1px solid #444;
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: var(--gold);
+  font-size: 9px;
+}
+.spell-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.spell-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid #222;
+  padding: 8px 10px;
+  font-size: 10px;
+  color: #ccc;
+  line-height: 1.7;
+}
+.spell-card strong { color: var(--gold); }
+
+/* ===== ABOUT SCREEN ===== */
+#aboutScreen {
+  background: radial-gradient(ellipse at 50% 50%, #000a05 0%, #0a0a0f 70%);
+}
+.about-box {
+  background: var(--panel);
+  border: 2px solid var(--border);
+  padding: 30px 36px;
+  max-width: 680px; width: 92vw;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.about-box h2 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  color: var(--acid);
+  margin-bottom: 20px;
+  text-align: center;
+}
+.about-section { margin-bottom: 20px; }
+.about-section h3 {
+  font-size: 11px;
+  color: #39ff14;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-left: 3px solid #39ff14;
+  padding-left: 8px;
+}
+.about-section p, .about-section li {
+  font-size: 11px; line-height: 1.8; color: #bbb;
+}
+.about-section ul { padding-left: 16px; }
+.credit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+.credit-card {
+  background: rgba(57,255,20,0.05);
+  border: 1px solid rgba(57,255,20,0.2);
+  padding: 8px 12px;
+  font-size: 10px;
+  color: #ccc;
+}
+.credit-card strong { color: #39ff14; display: block; margin-bottom: 3px; }
+.credit-card em { color: #888; font-style: normal; font-size: 9px; }
+.ai-badge {
+  display: inline-block;
+  background: rgba(57,255,20,0.1);
+  border: 1px solid rgba(57,255,20,0.4);
+  color: #39ff14;
+  font-size: 9px;
+  padding: 3px 8px;
+  margin: 3px 3px 3px 0;
+  border-radius: 2px;
+}
+.gh-link {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--ice);
+  font-size: 11px;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(128,216,255,0.3);
+  padding-bottom: 2px;
+}
+.gh-link:hover { color: #fff; border-color: #fff; }
+
+/* ===== GAME SCREEN ===== */
+#gameScreen { background: #0a0a0f; padding: 0; justify-content: flex-start; }
+#gameCanvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  cursor: crosshair;
+}
+
+/* ===== HUD ===== */
+#hud {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; gap: 14px;
+  padding: 6px 12px;
+  background: rgba(5,5,10,0.88);
+  border-bottom: 1px solid #1a1a2a;
+  z-index: 50;
+  pointer-events: none;
+}
+.hud-stat { display: flex; align-items: center; gap: 6px; }
+.hud-label { font-size: 9px; color: #666; letter-spacing: 1px; }
+.bar-wrap { width: 70px; height: 7px; background: #111; border: 1px solid #2a2a3a; }
+.bar { height: 100%; transition: width 0.12s; }
+#healthBar { background: linear-gradient(90deg, #8b0000, #c0392b); }
+#manaBar   { background: linear-gradient(90deg, #0d3b6e, #2980b9); }
+.hud-val { font-size: 10px; min-width: 26px; }
+
+.spell-slots { display: flex; gap: 5px; margin-left: auto; pointer-events: all; }
+.spell-slot {
+  width: 40px; height: 40px;
+  border: 2px solid #2a2a3a;
+  background: rgba(5,5,10,0.8);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all 0.12s;
+  position: relative;
+}
+.spell-slot:hover { border-color: #555; }
+.spell-slot.active { border-color: var(--gold); box-shadow: 0 0 8px rgba(255,215,0,0.4); }
+.spell-icon { font-size: 18px; line-height: 1; }
+.spell-key {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px; color: #555;
+  position: absolute; bottom: 2px; right: 3px;
+}
+.spell-slot.active .spell-key { color: var(--gold); }
+
+#score-hud { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--gold); }
+#wave-hud  { font-family: 'Press Start 2P', monospace; font-size: 9px; color: #ff8844; }
+
+/* ===== OVERLAYS ===== */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+}
+.overlay.hidden { display: none; }
+.overlay-box {
+  background: var(--panel);
+  border: 2px solid var(--border);
+  padding: 36px 44px;
+  text-align: center;
+  min-width: 320px;
+}
+.overlay-box h2 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  margin-bottom: 18px;
+}
+.overlay-box p { font-size: 11px; color: #aaa; margin-bottom: 22px; line-height: 1.7; }
+.overlay-box .btn { width: 100%; margin-top: 8px; }
+
+#deathOverlay h2 { color: #c0392b; text-shadow: 0 0 20px #c0392b88; }
+#pauseOverlay h2 { color: var(--gold); }
+#waveOverlay h2 { color: var(--acid); }
+
+/* ===== CORNER TAG ===== */
+#aiTag {
+  position: fixed; bottom: 8px; right: 10px;
+  font-size: 9px; color: #39ff1488;
+  letter-spacing: 1px;
+  pointer-events: none;
+  z-index: 300;
+}
+
+/* ===== MSG FLASH ===== */
+#msgFlash {
+  position: fixed;
+  bottom: 18px; left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--gold);
+  pointer-events: none;
+  z-index: 400;
+  text-shadow: 0 0 10px #ffd70088;
+  transition: opacity 0.3s;
+}
+</style>
+</head>
+<body>
+
+<!-- ========== TITLE SCREEN ========== -->
+<div id="titleScreen" class="screen">
+  <canvas class="title-canvas-bg" id="titleBg"></canvas>
+  <div class="title-content">
+    <div style="font-size:48px;margin-bottom:8px;">🔥</div>
+    <div class="game-title">ELEMENTAL CHAOS</div>
+    <div class="game-subtitle">A Pixel Physics Roguelite</div>
+    <div style="font-size:10px;color:#555;margin-top:-6px;">Inspired by Noita</div>
+    <div class="menu-buttons" style="margin-top:28px;">
+      <button class="btn primary" onclick="startGame()">▶ PLAY GAME</button>
+      <button class="btn" style="border-color:#39ff14;color:#39ff14;" onclick="startTutorial()">🎓 TUTORIAL</button>
+      <button class="btn" onclick="showScreen('tutorialScreen')">📖 HOW TO PLAY</button>
+      <button class="btn" onclick="showScreen('aboutScreen')">ℹ️ ABOUT &amp; CREDITS</button>
+    </div>
+    <div style="font-size:9px;color:#333;margin-top:24px;">v1.0 · School AI Club Project</div>
+  </div>
+</div>
+
+<!-- ========== TUTORIAL SCREEN ========== -->
+<div id="tutorialScreen" class="screen hidden">
+  <div class="tutorial-box">
+    <h2>📖 HOW TO PLAY</h2>
+
+    <div class="tut-section">
+      <h3>🎯 Objective</h3>
+      <p>Survive endless waves of enemies using your elemental magic. Each enemy you kill drops gold. Survive as long as possible and rack up the highest score!</p>
+    </div>
+
+    <div class="tut-section">
+      <h3>🕹️ Controls</h3>
+      <div class="key-grid">
+        <div class="key-row"><span>W</span> / <span>↑</span> / <span>Space</span> — Jump</div>
+        <div class="key-row"><span>A</span> / <span>←</span> — Move Left</div>
+        <div class="key-row"><span>D</span> / <span>→</span> — Move Right</div>
+        <div class="key-row"><span>Click</span> — Cast current spell</div>
+        <div class="key-row"><span>1</span><span>2</span><span>3</span><span>4</span> — Switch Spell</div>
+        <div class="key-row"><span>ESC</span> / <span>P</span> — Pause</div>
+        <div class="key-row"><span>R</span> — Restart (when dead)</div>
+      </div>
+    </div>
+
+    <div class="tut-section">
+      <h3>✨ Spells</h3>
+      <div class="spell-list">
+        <div class="spell-card"><strong>🔥 Fireball (1)</strong><br>Creates fire explosions. Ignites oil &amp; wood. Burns enemies over time. Cost: 8 mana.</div>
+        <div class="spell-card"><strong>❄️ Ice Bolt (2)</strong><br>Freezes water into ice. Slows enemies on hit. Creates ice bridges. Cost: 5 mana.</div>
+        <div class="spell-card"><strong>⚡ Lightning (3)</strong><br>Chains through water &amp; sparks. High damage, wide spread. Cost: 15 mana.</div>
+        <div class="spell-card"><strong>🟢 Acid (4)</strong><br>Dissolves terrain &amp; enemies. Persists in the world. Very dangerous! Cost: 10 mana.</div>
+      </div>
+    </div>
+
+    <div class="tut-section">
+      <h3>⚗️ World Physics</h3>
+      <ul>
+        <li>Sand falls and piles up realistically</li>
+        <li>Water and oil flow and spread sideways</li>
+        <li>Fire spreads to oil and wood — be careful!</li>
+        <li>Lava flows and ignites flammable materials</li>
+        <li>Acid dissolves most materials over time</li>
+        <li>Ice melts back into water slowly</li>
+        <li>Lightning chains through water — flood zones are deadly!</li>
+      </ul>
+    </div>
+
+    <div class="tut-section">
+      <h3>💀 Enemies</h3>
+      <ul>
+        <li>Red Crawler — basic melee enemy, chases you on the ground</li>
+        <li>Blue Jumper — fast, erratic jumping enemy</li>
+        <li>Orange Bomber — throws fire orbs at you from a distance</li>
+        <li>Enemies take damage from environmental hazards too — use the terrain!</li>
+        <li>Killing enemies drops gold (yellow pixels) — collect them!</li>
+      </ul>
+    </div>
+
+    <div class="tut-section">
+      <h3>💡 Tips</h3>
+      <ul>
+        <li>Use fire on oil pools for massive chain reactions</li>
+        <li>Flood areas then use lightning to hit multiple enemies at once</li>
+        <li>Acid can dig through stone if you aim carefully</li>
+        <li>Lava pools are deadly — don't fall in!</li>
+        <li>Enemies also take damage from fire and lava — lure them in!</li>
+      </ul>
+    </div>
+
+    <button class="btn primary" style="width:100%;margin-top:8px;" onclick="showScreen('titleScreen')">← BACK TO MENU</button>
+  </div>
+</div>
+
+<!-- ========== ABOUT / CREDITS SCREEN ========== -->
+<div id="aboutScreen" class="screen hidden">
+  <div class="about-box">
+    <h2>ℹ️ ABOUT &amp; CREDITS</h2>
+
+    <div class="about-section">
+      <h3>🎮 About the Game</h3>
+      <p>Elemental Chaos is a Noita-inspired pixel physics roguelite built entirely in HTML5 Canvas. Every pixel in the world obeys physical rules — sand falls, water flows, fire spreads, acid dissolves. You wield elemental magic to fight off waves of enemies in this fully destructible world.</p>
+    </div>
+
+    <div class="about-section">
+      <h3>🤖 How AI Was Used</h3>
+      <p>Artificial Intelligence played a central role in creating this game:</p>
+      <ul style="margin-top:8px;">
+        <li><strong>Game Code:</strong> The entire game — physics engine, enemy AI, spell system, rendering pipeline, UI, and all screens — was designed and coded with the assistance of <strong>Claude (Anthropic)</strong>, a large language model AI. Claude Sonnet 4.6 was used as the primary coding partner.</li>
+        <li><strong>Enemy AI Behaviour:</strong> Enemy pathfinding and attack logic uses simple state machine AI designed with Claude's help.</li>
+        <li><strong>Procedural World Generation:</strong> The terrain, platform placement, material distribution, and lava pool spawning is procedurally generated each run using algorithms developed with AI assistance.</li>
+        <li><strong>Game Design Iteration:</strong> Claude was used to brainstorm spell mechanics, enemy types, and physics interactions during the design process.</li>
+      </ul>
+      <div style="margin-top:10px;">
+        <span class="ai-badge">Claude (Anthropic)</span>
+        <span class="ai-badge">Procedural Generation</span>
+        <span class="ai-badge">AI Enemy Behaviour</span>
+        <span class="ai-badge">AI-Assisted Design</span>
+      </div>
+    </div>
+
+    <div class="about-section">
+      <h3>👥 No Human Artists / External Assets</h3>
+      <p>All visuals are rendered programmatically in HTML5 Canvas using JavaScript. No external images, sprites, sound files, or art assets were used. All fonts are loaded from Google Fonts (Press Start 2P, Share Tech Mono) — both are open source under the SIL Open Font License.</p>
+      <p style="margin-top:6px;color:#666;font-size:10px;">Font source: fonts.google.com — Open Font License (OFL)</p>
+    </div>
+
+    <div class="about-section">
+      <h3>💻 Source Code</h3>
+      <p>This game is open source. The full source code is available on GitHub:</p>
+      <a class="gh-link" href="https://github.com/YOUR-USERNAME/elemental-chaos" target="_blank">
+        🔗 github.com/YOUR-USERNAME/elemental-chaos
+      </a>
+      <p style="margin-top:8px;color:#555;font-size:10px;">⚠️ Replace the link above with your actual GitHub repo URL before submission.</p>
+    </div>
+
+    <div class="about-section">
+      <h3>🏆 Team Credits</h3>
+      <p style="margin-bottom:10px;font-size:10px;color:#666;">1 human member + 1 AI — both contributed directly to this project.</p>
+      <div class="credit-grid">
+        <div class="credit-card">
+          <strong>[Your Name Here]</strong>
+          AI Prompt Engineering<br>
+          <em>Directed the overall vision, engineered all AI prompts to build and refine the physics engine, spell system, enemy AI, UI, and gameplay — the sole human contributor on the project</em>
+        </div>
+        <div class="credit-card" style="border-color:rgba(57,255,20,0.35);background:rgba(57,255,20,0.05);">
+          <strong style="color:#39ff14;">Claude (Anthropic) 🤖</strong>
+          AI Developer &amp; Co-Creator<br>
+          <em>Wrote 100% of the game code including the pixel physics simulation, procedural world generation, enemy AI behaviour, spell system, rendering pipeline, and all UI screens. Model: Claude Sonnet 4.6</em>
+        </div>
+      </div>
+      <p style="margin-top:10px;font-size:10px;color:#555;">⚠️ Fill in your name above before your presentation!</p>
+    </div>
+
+    <div class="about-section">
+      <h3>🎬 Demo / Trailer</h3>
+      <p>A 3-minute gameplay demo video is available at:</p>
+      <a class="gh-link" href="https://youtu.be/YOUR-VIDEO-ID" target="_blank">🎬 youtu.be/YOUR-VIDEO-ID</a>
+      <p style="margin-top:8px;color:#555;font-size:10px;">⚠️ Replace with your actual YouTube/video link before submission.</p>
+    </div>
+
+    <div class="about-section">
+      <h3>🏫 School Appropriateness</h3>
+      <p>This game contains no violence beyond cartoon pixel effects, no inappropriate language, no adult themes. It is suitable for all school ages. The game promotes STEM skills including physics simulation, mathematics (vectors, collision), and AI/programming concepts.</p>
+    </div>
+
+    <button class="btn primary" style="width:100%;margin-top:8px;" onclick="showScreen('titleScreen')">← BACK TO MENU</button>
+  </div>
+</div>
+
+<!-- ========== GAME SCREEN ========== -->
+<div id="gameScreen" class="screen hidden" style="position:fixed;inset:0;padding:0;">
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-stat">
+      <div class="hud-label">HP</div>
+      <div class="bar-wrap"><div class="bar" id="healthBar" style="width:100%"></div></div>
+      <div class="hud-val" id="hpNum">100</div>
+    </div>
+    <div class="hud-stat">
+      <div class="hud-label">MP</div>
+      <div class="bar-wrap"><div class="bar" id="manaBar" style="width:100%"></div></div>
+      <div class="hud-val" id="manaNum">100</div>
+    </div>
+    <div id="wave-hud">WAVE 1</div>
+    <div id="score-hud">GOLD: 0</div>
+    <div class="spell-slots">
+      <div class="spell-slot active" id="slot0" onclick="setSpell(0)"><div class="spell-icon">🔥</div><div class="spell-key">1</div></div>
+      <div class="spell-slot" id="slot1" onclick="setSpell(1)"><div class="spell-icon">❄️</div><div class="spell-key">2</div></div>
+      <div class="spell-slot" id="slot2" onclick="setSpell(2)"><div class="spell-icon">⚡</div><div class="spell-key">3</div></div>
+      <div class="spell-slot" id="slot3" onclick="setSpell(3)"><div class="spell-icon">🟢</div><div class="spell-key">4</div></div>
+    </div>
+    <button class="btn" style="font-size:8px;padding:6px 10px;pointer-events:all;" onclick="togglePause()">⏸ PAUSE</button>
+  </div>
+  <canvas id="gameCanvas"></canvas>
+</div>
+
+<!-- ========== OVERLAYS ========== -->
+<div id="deathOverlay" class="overlay hidden">
+  <div class="overlay-box">
+    <h2>YOU DIED</h2>
+    <p id="deathStats">Gold: 0 &nbsp;|&nbsp; Wave: 1<br>Better luck next time, wizard.</p>
+    <button class="btn primary" onclick="restartGame()">▶ TRY AGAIN</button>
+    <button class="btn" onclick="backToMenu()">🏠 MAIN MENU</button>
+  </div>
+</div>
+
+<div id="pauseOverlay" class="overlay hidden" style="align-items:center;justify-content:center;">
+  <div style="display:flex;gap:16px;align-items:flex-start;max-width:820px;width:96vw;">
+    <div class="overlay-box" style="min-width:220px;flex-shrink:0;">
+      <h2>PAUSED</h2>
+      <p>Take a breath, wizard.</p>
+      <button class="btn primary" onclick="togglePause()">▶ RESUME</button>
+      <button class="btn" onclick="togglePauseControls()" id="controlsToggleBtn">📖 CONTROLS</button>
+      <button class="btn" onclick="backToMenu()">🏠 MAIN MENU</button>
+    </div>
+    <div id="pauseControlsPanel" class="overlay-box hidden" style="flex:1;text-align:left;max-height:80vh;overflow-y:auto;">
+      <h2 style="font-size:11px;margin-bottom:16px;">📖 CONTROLS</h2>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:10px;color:var(--accent);margin-bottom:8px;letter-spacing:2px;text-transform:uppercase;">Movement</div>
+        <div class="key-grid">
+          <div class="key-row"><span>W</span> / <span>↑</span> / <span>Space</span> — Jump</div>
+          <div class="key-row"><span>A</span> / <span>←</span> — Move Left</div>
+          <div class="key-row"><span>D</span> / <span>→</span> — Move Right</div>
+          <div class="key-row"><span>Click</span> — Cast Spell</div>
+          <div class="key-row"><span>1</span><span>2</span><span>3</span><span>4</span> — Switch Spell</div>
+          <div class="key-row"><span>P</span> / <span>ESC</span> — Pause</div>
+        </div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:10px;color:var(--accent);margin-bottom:8px;letter-spacing:2px;text-transform:uppercase;">Spells</div>
+        <div class="spell-list">
+          <div class="spell-card"><strong>🔥 Fireball (1)</strong><br>Creates fire. Ignites oil &amp; wood. Cost: 8 mana.</div>
+          <div class="spell-card"><strong>❄️ Ice Bolt (2)</strong><br>Freezes water. Creates ice bridges. Cost: 5 mana.</div>
+          <div class="spell-card"><strong>⚡ Lightning (3)</strong><br>Chains through water. High dmg. Cost: 15 mana.</div>
+          <div class="spell-card"><strong>🟢 Acid (4)</strong><br>Dissolves terrain &amp; enemies. Cost: 10 mana.</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--accent);margin-bottom:8px;letter-spacing:2px;text-transform:uppercase;">Tips</div>
+        <ul style="font-size:10px;color:#aaa;line-height:1.9;padding-left:14px;">
+          <li>Fire on oil pools = big chain reactions</li>
+          <li>Flood an area then use lightning to hit multiple enemies</li>
+          <li>Acid slowly digs through terrain</li>
+          <li>Lure enemies into lava pools!</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="waveOverlay" class="overlay hidden">
+  <div class="overlay-box">
+    <h2 id="waveTitle">WAVE CLEAR!</h2>
+    <p id="waveDesc">Prepare yourself — more enemies approach!</p>
+    <button class="btn primary" id="waveBtn" onclick="continueWave()">⚔️ NEXT WAVE</button>
+  </div>
+</div>
+
+<!-- TUTORIAL BANNER -->
+<div id="tutBanner" style="display:none;position:fixed;top:58px;left:50%;transform:translateX(-50%);z-index:500;
+  background:rgba(5,5,15,0.96);border:2px solid #39ff14;padding:12px 22px;max-width:520px;width:94vw;text-align:center;pointer-events:none;">
+  <div id="tutStep" style="font-family:'Press Start 2P',monospace;font-size:9px;color:#39ff14;margin-bottom:6px;letter-spacing:1px;"></div>
+  <div id="tutDesc" style="font-size:11px;color:#ccc;line-height:1.7;"></div>
+  <div id="tutProgress" style="margin-top:8px;font-size:9px;color:#555;"></div>
+</div>
+<!-- TUTORIAL ARROW indicator drawn on canvas via JS -->
+<div id="tutCompleteOverlay" class="overlay hidden">
+  <div class="overlay-box" style="text-align:center;">
+    <h2 style="color:#39ff14;font-size:14px;">🎓 TUTORIAL COMPLETE!</h2>
+    <p style="margin:14px 0;">You've mastered the basics, wizard!<br>Now take on the real waves.</p>
+    <button class="btn primary" onclick="startGame()">⚔️ PLAY FOR REAL</button>
+    <button class="btn" onclick="backToMenu()">🏠 MAIN MENU</button>
+  </div>
+</div>
+
+<div id="aiTag">⚡ Made with Claude AI</div>
+<div id="msgFlash"></div>
+
+<script>
+// =========================================================
+// ELEMENTAL CHAOS — Full Game Engine
+// Created with Claude (Anthropic) AI assistance
+// =========================================================
+
+// ---- Screen Manager ----
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+// ---- Title Background Particle Effect ----
+(function titleEffect(){
+  const bg = document.getElementById('titleBg');
+  if (!bg) return;
+  bg.width = window.innerWidth; bg.height = window.innerHeight;
+  const bx = bg.getContext('2d');
+  const pts = Array.from({length:60}, () => ({
+    x: Math.random()*bg.width, y: Math.random()*bg.height,
+    vx:(Math.random()-.5)*.4, vy:(Math.random()-.5)*.4,
+    r: Math.random()*2+1,
+    c: ['#ff5010','#ff8844','#ffd700','#ff3300','#ffaa00'][Math.floor(Math.random()*5)],
+    a: Math.random()*.6+.1
+  }));
+  function drawBg(){
+    bx.clearRect(0,0,bg.width,bg.height);
+    for(const p of pts){
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0)p.x=bg.width; if(p.x>bg.width)p.x=0;
+      if(p.y<0)p.y=bg.height; if(p.y>bg.height)p.y=0;
+      bx.globalAlpha=p.a;
+      bx.fillStyle=p.c;
+      bx.beginPath(); bx.arc(p.x,p.y,p.r,0,Math.PI*2); bx.fill();
+    }
+    bx.globalAlpha=1;
+    requestAnimationFrame(drawBg);
+  }
+  drawBg();
+})();
+
+// =========================================================
+// GAME ENGINE
+// =========================================================
+
+const SCALE = 3;
+let canvas, ctx, W, H;
+let grid, lifetime, updated;
+let player, enemies, projectiles, particles;
+let gold, wave, score, selectedSpell;
+let keys = {}, mouseX = 0, mouseY = 0;
+let gameRunning = false, paused = false, dead = false;
+let waveInProgress = false, waveEnemiesLeft = 0;
+let frame = 0;
+let msgTimer = 0;
+
+// Cell Types
+const EMPTY=0,SAND=1,WATER=2,STONE=3,FIRE=4,LAVA=5,
+      SMOKE=6,OIL=7,ACID=8,ICE=9,SPARK=10,WOOD=11,GOLD=12;
+
+const CELL_COLORS = {
+  [SAND]:  [[180,160,90],[200,180,110],[160,140,70]],
+  [WATER]: [[40,110,200],[50,130,220],[30,90,180]],
+  [STONE]: [[95,95,105],[110,110,120],[80,80,88]],
+  [OIL]:   [[65,45,15],[80,55,20],[50,35,10]],
+  [GOLD]:  [[255,215,0],[255,235,50],[220,180,0]],
+  [WOOD]:  [[120,80,35],[140,95,40],[100,65,25]],
+  [ICE]:   [[140,210,255],[160,225,255],[120,195,240]],
+};
+
+const SPELLS = [
+  {name:'Fireball', icon:'🔥', color:[255,80,10],  type:'fire',  r:3, dmg:25, cost:8,  speed:4.5, spread:0.12, grav:0.10},
+  {name:'Ice Bolt', icon:'❄️', color:[160,220,255], type:'ice',   r:2, dmg:18, cost:5,  speed:5.5, spread:0.05, grav:0.06},
+  {name:'Lightning',icon:'⚡', color:[255,240,50],  type:'spark', r:2, dmg:35, cost:15, speed:7.5, spread:0.30, grav:0.02},
+  {name:'Acid Orb', icon:'🟢', color:[50,220,30],   type:'acid',  r:3, dmg:12, cost:10, speed:3.5, spread:0.18, grav:0.12},
+];
+
+function idx(x,y){ return y*W+x; }
+function get(x,y){ if(x<0||x>=W||y<0||y>=H) return STONE; return grid[idx(x,y)]; }
+function set(x,y,t){ if(x<0||x>=W||y<0||y>=H) return; grid[idx(x,y)]=t; }
+function setLife(x,y,v){ if(x<0||x>=W||y<0||y>=H) return; lifetime[idx(x,y)]=v; }
+function swapCells(x1,y1,x2,y2){
+  const i1=idx(x1,y1),i2=idx(x2,y2);
+  let t=grid[i1];grid[i1]=grid[i2];grid[i2]=t;
+  t=lifetime[i1];lifetime[i1]=lifetime[i2];lifetime[i2]=t;
+}
+
+// ---- Init Canvas ----
+function initCanvas(){
+  canvas = document.getElementById('gameCanvas');
+  W = Math.floor(window.innerWidth / SCALE);
+  H = Math.floor((window.innerHeight - 52) / SCALE); // 52px hud
+  canvas.width = W; canvas.height = H;
+  canvas.style.width = (W*SCALE)+'px';
+  canvas.style.height = (H*SCALE)+'px';
+  canvas.style.marginTop = '52px';
+  ctx = canvas.getContext('2d');
+}
+
+// ---- World Generation ----
+function generateWorld(){
+  grid = new Uint8Array(W*H);
+  lifetime = new Uint16Array(W*H);
+  updated = new Uint8Array(W*H);
+  // Border walls
+  for(let y=0;y<H;y++){set(0,y,STONE);set(W-1,y,STONE);}
+  for(let x=0;x<W;x++){set(x,0,STONE);set(x,H-1,STONE);}
+  // Ground layer
+  for(let x=1;x<W-1;x++){
+    for(let y=H-10;y<H-1;y++) set(x,y,STONE);
+    for(let y=H-14;y<H-10;y++) set(x,y, x%8<5?SAND:STONE);
+  }
+  // Floating platforms
+  for(let i=0;i<10;i++){
+    const px=(5+Math.random()*(W-25))|0;
+    const py=((0.2+Math.random()*0.55)*H)|0;
+    const pw=(12+Math.random()*22)|0;
+    const ph=2+(Math.random()<0.3?1:0);
+    for(let x=px;x<px+pw&&x<W-1;x++)
+      for(let dy=0;dy<ph;dy++) set(x,py+dy,STONE);
+  }
+  // Lava pools
+  for(let i=0;i<3;i++){
+    const lx=(8+Math.random()*(W-20))|0;
+    const ly=(H-30+Math.random()*12)|0;
+    for(let dx=-5;dx<=5;dx++) for(let dy=-1;dy<=1;dy++) if(get(lx+dx,ly+dy)===EMPTY) set(lx+dx,ly+dy,LAVA);
+  }
+  // Scatter materials
+  for(let i=0;i<300;i++){
+    const x=(1+Math.random()*(W-2))|0;
+    const y=(1+Math.random()*(H-15))|0;
+    if(get(x,y)===EMPTY){
+      const r=Math.random();
+      if(r<0.30) set(x,y,SAND);
+      else if(r<0.50) set(x,y,WATER);
+      else if(r<0.65) set(x,y,OIL);
+      else if(r<0.72) set(x,y,WOOD);
+    }
+  }
+}
+
+// ---- Player ----
+function spawnPlayer(){
+  player = {
+    x: (W/2)|0, y: (H-22),
+    vx:0, vy:0,
+    hp:100, maxHp:100,
+    mana:100, maxMana:100,
+    onGround:false,
+    iframes:0,
+    facingRight: true
+  };
+}
+
+// ---- Enemy Types ----
+const ENEMY_TYPES = [
+  {name:'Crawler',  color:[200,40,40],  w:5,h:6, hp:40,  spd:0.7,  jump:3.2,  jumpChance:0.01, ranged:false, dmg:0.18},
+  {name:'Jumper',   color:[40,80,200],  w:4,h:5, hp:28,  spd:1.0,  jump:4.5,  jumpChance:0.04, ranged:false, dmg:0.14},
+  {name:'Bomber',   color:[220,130,20], w:5,h:6, hp:55,  spd:0.4,  jump:2.8,  jumpChance:0.008,ranged:true,  dmg:0.10, shotCd:180, shotTimer:0},
+];
+
+function spawnEnemies(n, waveNum){
+  for(let i=0;i<n;i++){
+    let typeIdx = 0;
+    if(waveNum >= 3 && Math.random()<0.3) typeIdx=1;
+    if(waveNum >= 5 && Math.random()<0.2) typeIdx=2;
+    const t = ENEMY_TYPES[typeIdx];
+    const side = Math.random()<0.5;
+    const ex = side ? (5+Math.random()*30)|0 : (W-35+Math.random()*30)|0;
+    enemies.push({
+      x:ex, y:8,
+      vx:(Math.random()-.5)*0.3,vy:0,
+      hp:t.hp*(1+waveNum*0.15)|0,
+      maxHp:t.hp*(1+waveNum*0.15)|0,
+      type:typeIdx,
+      onGround:false,
+      shotTimer: t.shotTimer||0,
+      iframes:0
+    });
+    waveEnemiesLeft++;
+  }
+}
+
+// ---- Cell Simulation ----
+function stepCell(x,y){
+  const t=get(x,y);
+  if(t===EMPTY||t===STONE) return;
+  const i=idx(x,y);
+  if(updated[i]) return;
+  updated[i]=1;
+
+  if(t===SAND){
+    if(tryFall(x,y,[EMPTY,WATER,OIL])) return;
+    const dirs=Math.random()<.5?[-1,1]:[1,-1];
+    for(const d of dirs) if(tryDiag(x,y,d,[EMPTY,WATER,OIL])) return;
+    return;
+  }
+  if(t===WATER||t===OIL||t===ACID){
+    if(tryFall(x,y,[EMPTY])) return;
+    const dirs=Math.random()<.5?[-1,1]:[1,-1];
+    for(const d of dirs){
+      if(tryDiag(x,y,d,[EMPTY])) return;
+      if(trySlide(x,y,d,[EMPTY])) return;
+    }
+    if(t===ACID){
+      const NB=[[0,1],[0,-1],[1,0],[-1,0]];
+      for(const [dx,dy] of NB){
+        const nt=get(x+dx,y+dy);
+        if(nt!==EMPTY&&nt!==ACID&&nt!==STONE&&Math.random()<0.008){
+          set(x+dx,y+dy,EMPTY); set(x,y,EMPTY); return;
+        }
+      }
+    }
+    return;
+  }
+  if(t===FIRE){
+    lifetime[i]++;
+    if(lifetime[i]>50+Math.random()*50){ set(x,y,Math.random()<.4?SMOKE:EMPTY); lifetime[i]=0; return; }
+    if(get(x,y-1)===EMPTY&&Math.random()<.25) set(x,y-1,SMOKE);
+    const NB=[[0,1],[0,-1],[1,0],[-1,0]];
+    for(const [dx,dy] of NB){
+      const nt=get(x+dx,y+dy);
+      if(nt===OIL&&Math.random()<.06){set(x+dx,y+dy,FIRE);lifetime[idx(x+dx,y+dy)]=0;}
+      if(nt===WOOD&&Math.random()<.015){set(x+dx,y+dy,FIRE);lifetime[idx(x+dx,y+dy)]=0;}
+      if(nt===ICE&&Math.random()<.08) set(x+dx,y+dy,WATER);
+    }
+    const d=Math.random()<.5?-1:1;
+    if(get(x+d,y)===EMPTY&&Math.random()<.03){swapCells(x,y,x+d,y);updated[idx(x+d,y)]=1;}
+    return;
+  }
+  if(t===LAVA){
+    if(tryFall(x,y,[EMPTY])) return;
+    const dirs=Math.random()<.5?[-1,1]:[1,-1];
+    for(const d of dirs){
+      if(tryDiag(x,y,d,[EMPTY])) return;
+      if(Math.random()<.3&&trySlide(x,y,d,[EMPTY])) return;
+    }
+    const NB=[[0,1],[0,-1],[1,0],[-1,0]];
+    for(const [dx,dy] of NB){
+      const nt=get(x+dx,y+dy);
+      if(nt===WATER&&Math.random()<.04){set(x+dx,y+dy,STONE);}
+      if((nt===OIL||nt===WOOD)&&Math.random()<.04){set(x+dx,y+dy,FIRE);lifetime[idx(x+dx,y+dy)]=0;}
+    }
+    return;
+  }
+  if(t===SMOKE){
+    lifetime[i]++;
+    if(lifetime[i]>100+Math.random()*80){set(x,y,EMPTY);lifetime[i]=0;return;}
+    if(get(x,y-1)===EMPTY&&Math.random()<.4){swapCells(x,y,x,y-1);updated[idx(x,y-1)]=1;return;}
+    const d=Math.random()<.5?-1:1;
+    if(get(x+d,y-1)===EMPTY&&Math.random()<.3){swapCells(x,y,x+d,y-1);updated[idx(x+d,y-1)]=1;}
+    else if(get(x+d,y)===EMPTY&&Math.random()<.2){swapCells(x,y,x+d,y);updated[idx(x+d,y)]=1;}
+    return;
+  }
+  if(t===ICE){
+    lifetime[i]++;
+    if(lifetime[i]>400+Math.random()*300){set(x,y,WATER);lifetime[i]=0;}
+    return;
+  }
+  if(t===SPARK){
+    lifetime[i]++;
+    if(lifetime[i]>4+Math.random()*4){set(x,y,EMPTY);lifetime[i]=0;return;}
+    const NB=[[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,1],[1,-1],[-1,-1]];
+    for(const [dx,dy] of NB){
+      const nt=get(x+dx,y+dy);
+      if(nt===WATER&&Math.random()<.25){set(x+dx,y+dy,SPARK);lifetime[idx(x+dx,y+dy)]=0;}
+      if(nt===OIL&&Math.random()<.4){set(x+dx,y+dy,FIRE);lifetime[idx(x+dx,y+dy)]=0;}
+    }
+    return;
+  }
+}
+function tryFall(x,y,pass){
+  if(pass.includes(get(x,y+1))){swapCells(x,y,x,y+1);updated[idx(x,y+1)]=1;return true;} return false;
+}
+function tryDiag(x,y,d,pass){
+  if(pass.includes(get(x+d,y+1))&&pass.includes(get(x+d,y))){swapCells(x,y,x+d,y+1);updated[idx(x+d,y+1)]=1;return true;} return false;
+}
+function trySlide(x,y,d,pass){
+  if(pass.includes(get(x+d,y))){swapCells(x,y,x+d,y);updated[idx(x+d,y)]=1;return true;} return false;
+}
+
+function simulateWorld(){
+  updated.fill(0);
+  for(let y=H-1;y>=0;y--){
+    if(y%2===frame%2){for(let x=0;x<W;x++) stepCell(x,y);}
+    else {for(let x=W-1;x>=0;x--) stepCell(x,y);}
+  }
+}
+
+// ---- Physics helpers ----
+const PASSABLE = [EMPTY,SMOKE,FIRE];
+function isSolid(t){ return t===STONE||t===SAND||t===WOOD||t===ICE; }
+function isHarmful(t){ return t===FIRE||t===LAVA||t===ACID; }
+
+function resolveEntityPhysics(e, width, height){
+  e.vy = Math.min(e.vy+0.32, 6);
+  e.vx *= 0.88;
+
+  // Entity is centered on e.x; left edge = e.x - width/2, right edge = e.x + width/2
+  const hw = width/2;
+
+  // --- Horizontal ---
+  const nx = e.x + e.vx;
+  const lx = (nx - hw)|0, rx = (nx + hw - 1)|0;
+  let hBlock = false;
+  const top = (e.y - height + 1)|0, bot = (e.y)|0;
+  for(let cy = top; cy <= bot && !hBlock; cy++){
+    if(isSolid(get(lx, cy)) || isSolid(get(rx, cy))) hBlock = true;
+  }
+  if(!hBlock) e.x = nx; else e.vx = 0;
+
+  // --- Vertical sweep (prevents tunnelling) ---
+  const ny = e.y + e.vy;
+  const elx = (e.x - hw)|0, erx = (e.x + hw - 1)|0;
+  e.onGround = false;
+  let vBlock = false;
+
+  if(e.vy >= 0){
+    // Falling — sweep downward from current bottom+1 to new bottom
+    const y0 = (e.y)|0 + 1;
+    const y1 = (ny)|0 + 1;
+    for(let cy = y0; cy <= y1 && !vBlock; cy++){
+      for(let cx = elx; cx <= erx; cx++){
+        if(isSolid(get(cx, cy))){ vBlock = true; e.onGround = true; e.y = cy - 1; break; }
+      }
+    }
+  } else {
+    // Rising — sweep upward from current top-1 to new top
+    const y0 = (e.y - height)|0 - 1;
+    const y1 = (ny - height)|0 - 1;
+    for(let cy = y0; cy >= y1 && !vBlock; cy--){
+      for(let cx = elx; cx <= erx; cx++){
+        if(isSolid(get(cx, cy))){ vBlock = true; e.y = cy + height + 1; break; }
+      }
+    }
+  }
+  if(!vBlock) e.y = ny; else e.vy = 0;
+
+  // Hard bounds
+  if(e.x - hw < 1)      { e.x = 1 + hw;      e.vx = 0; }
+  if(e.x + hw > W - 1)  { e.x = W - 1 - hw;  e.vx = 0; }
+  if(e.y > H - 2)       { e.y = H - 2; e.vy = 0; e.onGround = true; }
+  if(e.y - height < 1)  { e.y = 1 + height;   e.vy = 0; }
+}
+
+// ---- Player Update ----
+function updatePlayer(){
+  if(dead||paused) return;
+  if(player.iframes>0) player.iframes--;
+  // Input
+  const moveL = keys['KeyA']||keys['ArrowLeft'];
+  const moveR = keys['KeyD']||keys['ArrowRight'];
+  const jump  = keys['KeyW']||keys['ArrowUp']||keys['Space'];
+  if(moveL){ player.vx -= 0.55; player.facingRight=false; }
+  if(moveR){ player.vx += 0.55; player.facingRight=true; }
+  if(jump && player.onGround){ player.vy=-5.2; player.onGround=false; }
+  player.vx = Math.max(-2.5, Math.min(2.5, player.vx));
+  resolveEntityPhysics(player, 4, 7);
+  // Environment damage
+  const cx=(player.x|0)+2, cy=(player.y|0);
+  const env=get(cx,cy);
+  if(player.iframes===0){
+    if(env===FIRE||env===LAVA){ takeDamagePlayer(0.25); }
+    if(env===ACID){ takeDamagePlayer(0.35); }
+  }
+  // Collect gold
+  for(let dx=-3;dx<=3;dx++) for(let dy=-6;dy<=1;dy++){
+    const gx=(cx+dx)|0, gy=(cy+dy)|0;
+    if(get(gx,gy)===GOLD){ set(gx,gy,EMPTY); gold+=10; score+=10; spawnParticle(gx,gy,'#ffd700'); flashMsg('+10 GOLD',50); if(tutorialMode) tutGoldCollected++; }
+  }
+  // Mana regen
+  player.mana = Math.min(player.maxMana, player.mana+0.04);
+  if(player.hp<=0){ player.hp=0; triggerDeath(); }
+  updateHUD();
+}
+
+function takeDamagePlayer(amt){
+  if(player.iframes>0) return;
+  player.hp -= amt;
+  player.iframes = 8;
+}
+
+// ---- Enemy Update ----
+function updateEnemies(){
+  if(dead||paused) return;
+  for(let i=enemies.length-1;i>=0;i--){
+    const e=enemies[i];
+    const t=ENEMY_TYPES[e.type];
+    if(e.iframes>0) e.iframes--;
+    const dx=player.x-e.x;
+    // Movement
+    e.vx += Math.sign(dx)*0.08*t.spd;
+    e.vx = Math.max(-t.spd*1.8, Math.min(t.spd*1.8, e.vx));
+    // Jump
+    if(e.onGround && Math.random()<t.jumpChance+(Math.abs(dx)<20?0.03:0)){
+      e.vy=-t.jump;
+    }
+    resolveEntityPhysics(e, t.w, t.h);
+    // Env damage to enemy
+    const ex=(e.x|0)+2, ey=(e.y|0);
+    const eenv=get(ex,ey);
+    if(eenv===FIRE||eenv===LAVA) damageEnemy(e,0.5);
+    if(eenv===ACID) damageEnemy(e,0.8);
+    // Ranged attack
+    if(t.ranged){
+      e.shotTimer++;
+      if(e.shotTimer>=t.shotCd&&Math.abs(dx)<80){
+        e.shotTimer=0;
+        const angle=Math.atan2(player.y-e.y, dx);
+        projectiles.push({x:e.x,y:e.y,vx:Math.cos(angle)*3.5,vy:Math.sin(angle)*3.5-0.5,spell:0,fromEnemy:true,life:100});
+      }
+    }
+    // Contact damage
+    if(e.iframes===0&&Math.abs(e.x-player.x)<6&&Math.abs(e.y-player.y)<8){
+      takeDamagePlayer(t.dmg);
+      e.iframes=20;
+    }
+    if(e.y>H||e.hp<=0){
+      if(e.hp<=0){ dropGold(e.x|0,e.y|0); score+=50+wave*10; waveEnemiesLeft--; if(tutorialMode) tutEnemiesKilled++; }
+      enemies.splice(i,1);
+      if(waveInProgress && waveEnemiesLeft<=0) waveComplete();
+    }
+  }
+}
+
+function damageEnemy(e, amt){
+  if(e.iframes>0) return;
+  e.hp-=amt; e.iframes=5;
+}
+
+function dropGold(x,y){
+  for(let i=0;i<4;i++){
+    const gx=x+((Math.random()*5-2)|0);
+    const gy=y+((Math.random()*4-2)|0);
+    if(get(gx,gy)===EMPTY) set(gx,gy,GOLD);
+  }
+  for(let k=0;k<6;k++) spawnParticle(x,y,'#ffd700');
+}
+
+// ---- Projectiles ----
+function castSpell(mx, my){
+  if(dead||paused) return;
+  const sp=SPELLS[selectedSpell];
+  if(player.mana<sp.cost){ flashMsg('NOT ENOUGH MANA!',90); return; }
+  player.mana-=sp.cost;
+  // Tutorial tracking
+  if(tutorialMode){
+    if(selectedSpell===0) tutFireballsFired++;
+    if(selectedSpell===1) tutIceFired++;
+    if(selectedSpell===2) tutLightningFired++;
+    if(selectedSpell===3) tutAcidFired++;
+  }
+  const wx=mx/SCALE, wy=(my-52)/SCALE;
+  const dx=wx-player.x, dy=wy-player.y;
+  const len=Math.sqrt(dx*dx+dy*dy)||1;
+  const spread=(Math.random()-.5)*sp.spread;
+  const angle=Math.atan2(dy,dx)+spread;
+  projectiles.push({
+    x:player.x, y:player.y,
+    vx:Math.cos(angle)*sp.speed,
+    vy:Math.sin(angle)*sp.speed,
+    spell:selectedSpell, fromEnemy:false, life:140
+  });
+}
+
+function updateProjectiles(){
+  if(paused) return;
+  for(let i=projectiles.length-1;i>=0;i--){
+    const p=projectiles[i];
+    const sp=SPELLS[p.spell];
+    p.vx*=0.99;
+    p.vy+=sp.grav||0.08;
+    p.x+=p.vx; p.y+=p.vy;
+    p.life--;
+    // Trail
+    if(frame%2===0) spawnParticle(p.x,p.y,`rgb(${sp.color[0]},${sp.color[1]},${sp.color[2]})`);
+    const px=p.x|0, py=p.y|0;
+    const cellHere=get(px,py);
+    let exploded=false;
+    // Wall hit
+    if(isSolid(cellHere)||p.life<=0) exploded=true;
+    // Enemy/Player hit
+    if(!p.fromEnemy){
+      for(let j=enemies.length-1;j>=0;j--){
+        const e=enemies[j];
+        if(Math.abs(e.x-p.x)<6&&Math.abs(e.y-p.y)<7){ damageEnemy(e,sp.dmg); exploded=true; break; }
+      }
+    } else {
+      if(Math.abs(player.x-p.x)<5&&Math.abs(player.y-p.y)<7){ takeDamagePlayer(12); exploded=true; }
+    }
+    if(px<0||px>=W||py<0||py>=H){ projectiles.splice(i,1); continue; }
+    if(exploded){ explodeProjectile(p); projectiles.splice(i,1); }
+  }
+}
+
+function explodeProjectile(p){
+  const sp=SPELLS[p.spell];
+  const px=p.x|0, py=p.y|0;
+  const r=sp.r+3;
+  for(let dx=-r;dx<=r;dx++) for(let dy=-r;dy<=r;dy++){
+    if(dx*dx+dy*dy>r*r) continue;
+    const tx=px+dx,ty=py+dy;
+    if(get(tx,ty)===STONE) continue;
+    if(p.spell===0){
+      if(get(tx,ty)===OIL && tutorialMode) tutOilIgnited=true;
+      if(Math.random()<.65) set(tx,ty,FIRE);
+    }
+    else if(p.spell===1){ const ct=get(tx,ty); if(ct===WATER||ct===EMPTY) set(tx,ty,ICE); }
+    else if(p.spell===2){ if(Math.random()<.45) set(tx,ty,SPARK); }
+    else if(p.spell===3){ if(Math.random()<.55) set(tx,ty,ACID); }
+  }
+  for(let k=0;k<10;k++) spawnParticle(p.x,p.y,`rgb(${sp.color[0]},${sp.color[1]},${sp.color[2]})`);
+}
+
+// ---- Particles ----
+function spawnParticle(x,y,color){
+  particles.push({
+    x,y,
+    vx:(Math.random()-.5)*1.2,
+    vy:-Math.random()*1.5-0.2,
+    color, life:25+Math.random()*20|0, maxLife:45
+  });
+}
+function updateParticles(){
+  if(paused) return;
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.06; p.life--;
+    if(p.life<=0) particles.splice(i,1);
+  }
+}
+
+// ---- Rendering ----
+const imgData = {ref:null};
+function initImageData(){
+  imgData.ref = ctx.createImageData(W,H);
+}
+function renderWorld(){
+  const px=imgData.ref.data;
+  for(let i=0;i<W*H;i++){
+    const t=grid[i];
+    const p4=i*4;
+    if(t===EMPTY){px[p4]=8;px[p4+1]=8;px[p4+2]=15;px[p4+3]=255;continue;}
+    let r,g,b;
+    if(CELL_COLORS[t]){
+      const variants=CELL_COLORS[t];
+      const v=variants[i%variants.length];
+      r=v[0];g=v[1];b=v[2];
+    } else if(t===FIRE){r=200+Math.random()*55|0;g=30+Math.random()*80|0;b=Math.random()*15|0;}
+    else if(t===LAVA){r=210+Math.random()*45|0;g=30+Math.random()*70|0;b=0;}
+    else if(t===SMOKE){const v=65+Math.random()*35|0;r=g=b=v;}
+    else if(t===ACID){r=30+Math.random()*40|0;g=200+Math.random()*55|0;b=10+Math.random()*20|0;}
+    else if(t===SPARK){r=255;g=200+Math.random()*55|0;b=Math.random()*40|0;}
+    else{r=g=b=100;}
+    px[p4]=Math.max(0,Math.min(255,r));
+    px[p4+1]=Math.max(0,Math.min(255,g));
+    px[p4+2]=Math.max(0,Math.min(255,b));
+    px[p4+3]=255;
+  }
+  ctx.putImageData(imgData.ref,0,0);
+}
+
+function renderEntities(){
+  const S=SCALE;
+  // Player
+  const pal = player.iframes>0&&frame%4<2;
+  const px=(player.x*S)|0, py=(player.y*S)|0;
+  ctx.fillStyle = pal?'#ffffff':'#a0c8ff';
+  ctx.fillRect(px-2*S, py-7*S, 5*S, 7*S);
+  ctx.fillStyle = '#ffddaa';
+  ctx.fillRect(px-1*S, py-9*S, 3*S, 2*S);
+  // Wand
+  ctx.fillStyle='#c8a060';
+  if(player.facingRight) ctx.fillRect(px+3*S, py-5*S, 4*S, S);
+  else ctx.fillRect(px-6*S, py-5*S, 4*S, S);
+  // Enemies
+  for(const e of enemies){
+    const t=ENEMY_TYPES[e.type];
+    const ef=e.iframes>0&&frame%4<2;
+    const ex=(e.x*S)|0, ey=(e.y*S)|0;
+    const ew=t.w*S, eh=t.h*S;
+    ctx.fillStyle=ef?'#ffffff':`rgb(${t.color[0]},${t.color[1]},${t.color[2]})`;
+    ctx.fillRect(ex-ew/2, ey-eh, ew, eh);
+    // Eyes
+    ctx.fillStyle='#ffff80';
+    ctx.fillRect(ex-2*S, ey-eh+S, S, S);
+    ctx.fillRect(ex+S,   ey-eh+S, S, S);
+    // HP bar
+    const bw=12*S, bh=2*S;
+    ctx.fillStyle='#200000';
+    ctx.fillRect(ex-6*S, ey-eh-3*S, bw, bh);
+    ctx.fillStyle=e.hp/e.maxHp>0.5?'#40cc40':'#cc4040';
+    ctx.fillRect(ex-6*S, ey-eh-3*S, bw*(e.hp/e.maxHp), bh);
+  }
+  // Projectiles
+  for(const p of projectiles){
+    const sp=SPELLS[p.spell];
+    ctx.globalAlpha=0.9;
+    ctx.fillStyle=`rgb(${sp.color[0]},${sp.color[1]},${sp.color[2]})`;
+    ctx.beginPath(); ctx.arc(p.x*S, p.y*S, sp.r*S, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha=1;
+  }
+  // Particles
+  for(const p of particles){
+    ctx.globalAlpha=(p.life/p.maxLife)*0.85;
+    ctx.fillStyle=p.color;
+    ctx.fillRect(p.x*S-2, p.y*S-2, 4, 4);
+  }
+  ctx.globalAlpha=1;
+}
+
+function renderHUDCanvas(){
+  // mini spell cost indicators drawn on canvas not HTML
+}
+
+// ---- HUD ----
+function updateHUD(){
+  document.getElementById('healthBar').style.width=(player.hp/player.maxHp*100)+'%';
+  document.getElementById('manaBar').style.width=(player.mana/player.maxMana*100)+'%';
+  document.getElementById('hpNum').textContent=Math.ceil(player.hp);
+  document.getElementById('manaNum').textContent=Math.ceil(player.mana);
+  document.getElementById('score-hud').textContent='GOLD: '+gold;
+  document.getElementById('wave-hud').textContent='WAVE '+wave;
+}
+
+// ---- Wave System ----
+function startWave(){
+  waveInProgress=true;
+  waveEnemiesLeft=0;
+  const count=3+wave*2;
+  spawnEnemies(count, wave);
+  flashMsg('— WAVE '+wave+' —', 180);
+}
+
+function waveComplete(){
+  waveInProgress=false;
+  wave++;
+  gold+=wave*5;
+  score+=wave*100;
+  document.getElementById('waveTitle').textContent='WAVE CLEAR! 🏆';
+  document.getElementById('waveDesc').textContent=`+${wave*5} bonus gold!\nPrepare for Wave ${wave}...`;
+  document.getElementById('waveOverlay').classList.remove('hidden');
+}
+
+function continueWave(){
+  document.getElementById('waveOverlay').classList.add('hidden');
+  startWave();
+}
+
+// ---- Game Flow ----
+function startGame(){
+  showScreen('gameScreen');
+  initCanvas();
+  generateWorld();
+  spawnPlayer();
+  enemies=[]; projectiles=[]; particles=[];
+  gold=0; score=0; wave=1; selectedSpell=0;
+  waveInProgress=false; waveEnemiesLeft=0;
+  dead=false; paused=false; gameRunning=true;
+  initImageData();
+  updateHUD();
+  document.getElementById('deathOverlay').classList.add('hidden');
+  document.getElementById('pauseOverlay').classList.add('hidden');
+  document.getElementById('waveOverlay').classList.add('hidden');
+  setSpell(0);
+  flashMsg('WAVE 1 — SURVIVE!', 180);
+  // Give a moment then start wave
+  setTimeout(startWave, 1500);
+  if(!gameLoopRunning) gameLoop();
+}
+
+function restartGame(){
+  document.getElementById('deathOverlay').classList.add('hidden');
+  startGame();
+}
+
+function backToMenu(){
+  gameRunning=false;
+  tutorialMode=false;
+  document.getElementById('deathOverlay').classList.add('hidden');
+  document.getElementById('pauseOverlay').classList.add('hidden');
+  document.getElementById('waveOverlay').classList.add('hidden');
+  document.getElementById('tutBanner').style.display='none';
+  document.getElementById('tutCompleteOverlay').classList.add('hidden');
+  showScreen('titleScreen');
+}
+
+function triggerDeath(){
+  dead=true;
+  document.getElementById('deathStats').textContent=`Gold: ${gold}  |  Wave: ${wave}  |  Score: ${score}\nThe world consumed you, wizard.`;
+  document.getElementById('deathOverlay').classList.remove('hidden');
+}
+
+function togglePause(){
+  if(dead) return;
+  paused=!paused;
+  document.getElementById('pauseOverlay').classList.toggle('hidden',!paused);
+  if(!paused){
+    document.getElementById('pauseControlsPanel').classList.add('hidden');
+    document.getElementById('controlsToggleBtn').textContent='📖 CONTROLS';
+  }
+}
+
+function togglePauseControls(){
+  const panel=document.getElementById('pauseControlsPanel');
+  const btn=document.getElementById('controlsToggleBtn');
+  const nowHidden=panel.classList.toggle('hidden');
+  btn.textContent = nowHidden ? '📖 CONTROLS' : '✖ HIDE CONTROLS';
+}
+
+function setSpell(i){
+  selectedSpell=i;
+  document.querySelectorAll('.spell-slot').forEach((s,j)=>s.classList.toggle('active',j===i));
+}
+
+function flashMsg(txt,dur){
+  const el=document.getElementById('msgFlash');
+  el.textContent=txt;
+  el.style.opacity=1;
+  msgTimer=dur;
+}
+
+// =========================================================
+// TUTORIAL SYSTEM
+// =========================================================
+let tutorialMode = false;
+let tutStep = 0;
+let tutStepDone = false;
+let tutArrow = null; // {x, y} in world coords to point at
+let tutJumpCount = 0;
+let tutFireballsFired = 0;
+let tutIceFired = 0;
+let tutLightningFired = 0;
+let tutAcidFired = 0;
+let tutEnemiesKilled = 0;
+let tutGoldCollected = 0;
+let tutOilIgnited = false;
+let tutCheckTimer = 0;
+
+const TUT_STEPS = [
+  {
+    title: 'STEP 1 / 7 — MOVE',
+    desc: 'Use A / D (or arrow keys) to walk LEFT and RIGHT.\nReach the green marker on the right!',
+    progress: 'Walk to the glowing marker →',
+    check: () => player.x > W * 0.65,
+    arrow: () => ({x: W*0.7, y: H-16}),
+    onEnter: () => {}
+  },
+  {
+    title: 'STEP 2 / 7 — JUMP',
+    desc: 'Press W, ↑ or SPACE to jump.\nJump up onto the platform above you!',
+    progress: 'Jump onto the platform',
+    check: () => player.y < H * 0.55,
+    arrow: () => ({x: W*0.7, y: H*0.45}),
+    onEnter: () => { tutJumpCount=0; }
+  },
+  {
+    title: 'STEP 3 / 7 — FIREBALL 🔥',
+    desc: 'Press 1 to select Fireball.\nCLICK on the oil pool below to ignite it!',
+    progress: 'Press 1, then click the orange oil pool',
+    check: () => tutOilIgnited,
+    arrow: () => ({x: W*0.72, y: H-20}),
+    onEnter: () => { setSpell(0); tutOilIgnited=false; }
+  },
+  {
+    title: 'STEP 4 / 7 — ICE BOLT ❄️',
+    desc: 'Press 2 to select Ice Bolt.\nFire it at the water pool to freeze it!',
+    progress: 'Press 2, then click the blue water pool',
+    check: () => tutIceFired >= 1 && hasIceNear(W*0.3|0, H-18, 20),
+    arrow: () => ({x: W*0.3, y: H-18}),
+    onEnter: () => { setSpell(1); tutIceFired=0; }
+  },
+  {
+    title: 'STEP 5 / 7 — LIGHTNING ⚡',
+    desc: 'Press 3 to select Lightning.\nFire it into the water — watch it chain!',
+    progress: 'Press 3, then click the water/ice area',
+    check: () => tutLightningFired >= 1,
+    arrow: () => ({x: W*0.3, y: H-18}),
+    onEnter: () => { setSpell(2); tutLightningFired=0; }
+  },
+  {
+    title: 'STEP 6 / 7 — KILL AN ENEMY ⚔️',
+    desc: 'An enemy approaches! Use any spell (1-4)\nto defeat it. Collect the gold it drops!',
+    progress: () => `Kill the enemy and collect gold (${tutEnemiesKilled}/1 killed, ${tutGoldCollected}/1 gold)`,
+    check: () => tutEnemiesKilled >= 1 && tutGoldCollected >= 1,
+    arrow: () => enemies.length>0 ? {x:enemies[0].x, y:enemies[0].y-10} : null,
+    onEnter: () => {
+      tutEnemiesKilled=0; tutGoldCollected=0;
+      // Spawn one slow tutorial enemy on the right
+      enemies=[];
+      enemies.push({
+        x: W*0.75|0, y:8,
+        vx:0, vy:0,
+        hp:25, maxHp:25,
+        type:0, onGround:false,
+        shotTimer:0, iframes:0,
+        tutEnemy:true
+      });
+      waveEnemiesLeft=1; waveInProgress=false;
+    }
+  },
+  {
+    title: 'STEP 7 / 7 — REACH THE EXIT',
+    desc: 'Well done, wizard! Walk to the EXIT portal\non the far left to complete the tutorial!',
+    progress: 'Walk left to the EXIT portal ←',
+    check: () => player.x < W * 0.1,
+    arrow: () => ({x: W*0.05, y: H-16}),
+    onEnter: () => { enemies=[]; }
+  }
+];
+
+function hasIceNear(cx, cy, radius){
+  for(let dx=-radius;dx<=radius;dx++) for(let dy=-radius;dy<=radius;dy++){
+    if(get(cx+dx,cy+dy)===ICE) return true;
+  }
+  return false;
+}
+
+function generateTutorialWorld(){
+  grid = new Uint8Array(W*H);
+  lifetime = new Uint16Array(W*H);
+  updated = new Uint8Array(W*H);
+
+  // Border & ceiling
+  for(let y=0;y<H;y++){set(0,y,STONE);set(W-1,y,STONE);}
+  for(let x=0;x<W;x++){set(x,0,STONE);set(x,H-1,STONE);}
+
+  // Flat ground
+  for(let x=1;x<W-1;x++){
+    for(let y=H-8;y<H-1;y++) set(x,y,STONE);
+  }
+
+  // Left wall (exit side) — open passage
+  for(let y=H-20;y<H-8;y++) set(8,y,STONE);
+
+  // Mid-right platform (for jump step)
+  for(let x=(W*0.55)|0; x<(W*0.85)|0; x++){
+    set(x,(H*0.5)|0,STONE);
+    set(x,(H*0.5+1)|0,STONE);
+  }
+
+  // Staircase block to help reach platform
+  for(let i=0;i<5;i++){
+    const bx=(W*0.52-i*3)|0;
+    const by=(H*0.5+2+i*2)|0;
+    for(let dx=0;dx<4;dx++) for(let dy=0;dy<i*2+2;dy++) set(bx+dx,by+dy,STONE);
+  }
+
+  // Water pool (left area, step 4+5)
+  for(let x=(W*0.22)|0; x<(W*0.38)|0; x++){
+    for(let y=H-12;y<H-8;y++) set(x,y,WATER);
+  }
+
+  // Oil pool (right area, step 3)
+  for(let x=(W*0.65)|0; x<(W*0.80)|0; x++){
+    for(let y=H-11;y<H-8;y++) set(x,y,OIL);
+  }
+
+  // Thin stone dividers between zones
+  for(let y=H-18;y<H-8;y++) set((W*0.45)|0,y,STONE);
+  for(let y=H-18;y<H-8;y++) set((W*0.55)|0,y,STONE);
+}
+
+function startTutorial(){
+  showScreen('gameScreen');
+  initCanvas();
+  generateTutorialWorld();
+  spawnPlayer();
+  player.x = (W*0.12)|0;
+  player.y = H-16;
+  enemies=[]; projectiles=[]; particles=[];
+  gold=0; score=0; wave=0; selectedSpell=0;
+  dead=false; paused=false; gameRunning=true;
+  tutorialMode=true;
+  tutStep=0; tutStepDone=false; tutCheckTimer=0;
+  tutOilIgnited=false; tutEnemiesKilled=0;
+  tutGoldCollected=0; tutIceFired=0;
+  tutLightningFired=0; tutFireballsFired=0; tutAcidFired=0;
+  initImageData();
+  document.getElementById('deathOverlay').classList.add('hidden');
+  document.getElementById('pauseOverlay').classList.add('hidden');
+  document.getElementById('waveOverlay').classList.add('hidden');
+  document.getElementById('tutCompleteOverlay').classList.add('hidden');
+  document.getElementById('wave-hud').textContent='TUTORIAL';
+  document.getElementById('score-hud').textContent='';
+  setSpell(0);
+  enterTutStep(0);
+  if(!gameLoopRunning) gameLoop();
+}
+
+function enterTutStep(i){
+  tutStep=i;
+  tutStepDone=false;
+  const s=TUT_STEPS[i];
+  if(s.onEnter) s.onEnter();
+  document.getElementById('tutBanner').style.display='block';
+  document.getElementById('tutStep').textContent=s.title;
+  document.getElementById('tutDesc').textContent=s.desc;
+  updateTutProgress();
+}
+
+function updateTutProgress(){
+  const s=TUT_STEPS[tutStep];
+  const prog = typeof s.progress==='function' ? s.progress() : s.progress;
+  document.getElementById('tutProgress').textContent='▶ '+prog;
+}
+
+function advanceTutStep(){
+  tutStep++;
+  if(tutStep>=TUT_STEPS.length){
+    completeTutorial();
+  } else {
+    enterTutStep(tutStep);
+  }
+}
+
+function completeTutorial(){
+  tutorialMode=false;
+  document.getElementById('tutBanner').style.display='none';
+  document.getElementById('tutCompleteOverlay').classList.remove('hidden');
+}
+
+function updateTutorial(){
+  if(!tutorialMode||dead||paused) return;
+  tutCheckTimer++;
+  if(tutCheckTimer%30!==0) return; // check every 30 frames
+  const s=TUT_STEPS[tutStep];
+  // Update progress text
+  updateTutProgress();
+  // Arrow target
+  tutArrow = s.arrow ? s.arrow() : null;
+  // Check completion
+  if(!tutStepDone && s.check && s.check()){
+    // Flash success then advance
+    tutStepDone=true;
+    flashMsg('✓ NICE WORK!', 80);
+    setTimeout(advanceTutStep, 900);
+  }
+}
+
+function renderTutorial(){
+  if(!tutorialMode) return;
+  const S=SCALE;
+  // Draw glowing arrow/marker
+  if(tutArrow){
+    const sx=tutArrow.x*S, sy=tutArrow.y*S;
+    ctx.save();
+    const pulse=0.6+0.4*Math.sin(frame*0.12);
+    ctx.globalAlpha=pulse;
+    ctx.fillStyle='#39ff14';
+    ctx.shadowColor='#39ff14';
+    ctx.shadowBlur=10;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy-10);
+    ctx.lineTo(sx+6, sy);
+    ctx.lineTo(sx, sy+10);
+    ctx.lineTo(sx-6, sy);
+    ctx.closePath();
+    ctx.fill();
+    const bounce = Math.sin(frame*0.15)*4;
+    ctx.beginPath();
+    ctx.moveTo(sx-5, sy-18-bounce);
+    ctx.lineTo(sx+5, sy-18-bounce);
+    ctx.lineTo(sx, sy-12-bounce);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Step 1 goal marker (green zone)
+  if(tutStep===0){
+    ctx.save();
+    const gx=(W*0.65)*S, gy=(H-16)*S;
+    const pulse=0.2+0.15*Math.sin(frame*0.1);
+    ctx.globalAlpha=pulse;
+    ctx.fillStyle='#39ff14';
+    ctx.fillRect(gx, gy-20*S, 8*S, 20*S);
+    ctx.globalAlpha=1;
+    ctx.restore();
+  }
+
+  // Step 7 exit portal
+  if(tutStep===6){
+    ctx.save();
+    const ex=(W*0.05)*S, ey=(H-16)*S;
+    const pulse=0.5+0.5*Math.abs(Math.sin(frame*0.08));
+    ctx.globalAlpha=pulse;
+    ctx.strokeStyle='#39ff14';
+    ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.ellipse(ex+8*S, ey-15*S, 10*S, 18*S, 0, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.globalAlpha=0.15*pulse;
+    ctx.fillStyle='#39ff14';
+    ctx.fill();
+    ctx.globalAlpha=1;
+    ctx.fillStyle='#39ff14';
+    ctx.font=`bold ${10*S}px monospace`;
+    ctx.fillText('EXIT', ex-4*S, ey-36*S);
+    ctx.restore();
+  }
+}
+
+// Hook into castSpell to track tutorial spell fires
+const _origCastSpell = castSpell;
+// Override tracking below in updateProjectiles explode
+
+// =========================================================
+// END TUTORIAL SYSTEM
+// =========================================================
+
+// ---- Input ----
+window.addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(['Space','ArrowUp','ArrowDown'].includes(e.code)) e.preventDefault();
+  if(e.code==='Digit1') setSpell(0);
+  if(e.code==='Digit2') setSpell(1);
+  if(e.code==='Digit3') setSpell(2);
+  if(e.code==='Digit4') setSpell(3);
+  if(e.code==='KeyP'||e.code==='Escape') togglePause();
+  if(e.code==='KeyR'&&dead) restartGame();
+});
+window.addEventListener('keyup',e=>{ keys[e.code]=false; });
+
+window.addEventListener('mousemove',e=>{ mouseX=e.clientX; mouseY=e.clientY; });
+
+// ---- Main Loop ----
+let gameLoopRunning=false;
+function gameLoop(){
+  gameLoopRunning=true;
+  if(!gameRunning){ gameLoopRunning=false; return; }
+  frame++;
+  if(!paused&&!dead){
+    simulateWorld();
+    updatePlayer();
+    updateEnemies();
+    updateProjectiles();
+    updateParticles();
+    // Occasional sky drips
+    if(frame%90===0&&Math.random()<0.5){
+      const x=(1+Math.random()*(W-2))|0;
+      if(get(x,1)===EMPTY) set(x,1,Math.random()<0.6?WATER:SAND);
+    }
+  }
+  // Render
+  renderWorld();
+  renderEntities();
+  // Msg fade
+  if(msgTimer>0){
+    msgTimer--;
+    if(msgTimer<30) document.getElementById('msgFlash').style.opacity=msgTimer/30;
+  } else {
+    document.getElementById('msgFlash').style.opacity=0;
+  }
+  requestAnimationFrame(gameLoop);
+}
+
+// Hook canvas click after it exists
+document.getElementById('gameCanvas').addEventListener('click',e=>{
+  if(!gameRunning||dead||paused) return;
+  castSpell(e.clientX, e.clientY);
+});
+
+// Resize handler
+window.addEventListener('resize',()=>{
+  const bg=document.getElementById('titleBg');
+  if(bg){bg.width=window.innerWidth;bg.height=window.innerHeight;}
+});
+</script>
+</body>
+</html>
